@@ -53,17 +53,52 @@ def preprocessData(filename):
      
     data = pd.read_csv(filename, delimiter='\t')
 
-    # Using trainDataPct% of the data for training
+    # Using 70% of the data for training
     trainDataSize = int(0.7 * data.shape[0])
     trainData = data.iloc[:trainDataSize, :]
     X_train = trainData.iloc[:, :-1].values
     Y_train_lat = (trainData.iloc[:, -2].values).reshape(-1, 1)
     Y_train_lon = (trainData.iloc[:, -1].values).reshape(-1, 1)
 
-    # Using testDataPct% of the data for testing 
+    # Using 30% of the data for testing 
     testData = data.iloc[trainDataSize:, :]
     X_test = testData.iloc[:, :-1].values
     Y_test_lat = (testData.iloc[:, -2].values).reshape(-1, 1)
     Y_test_lon = (testData.iloc[:, -1].values).reshape(-1, 1)
 
     return X_train, Y_train_lat, Y_train_lon, X_test, Y_test_lat, Y_test_lon
+
+def trainModelLat(X_train, Y_train_lat):
+
+    # Defiing decision variables
+    beta = cp.Variable((X_train.shape[1], 1))
+
+    # Defining objective function
+    objective = cp.Minimize(cp.sum_squares(Y_train_lat - X_train @ beta))
+
+    # Formulating problem
+    problem = cp.Problem(objective)
+
+    # Solving problem
+    problem.solve()
+
+    return beta.value
+
+def trainModelLon(X_train, Y_train_lon):
+
+    # Defiing decision variables
+    beta = cp.Variable((X_train.shape[1], 1))
+
+    # Defining objective function
+    objective = cp.Minimize(cp.sum_squares(Y_train_lon - X_train @ beta))
+
+    # Formulating problem
+    problem = cp.Problem(objective)
+
+    # Solving problem
+    problem.solve()
+
+    return beta.value
+
+
+
