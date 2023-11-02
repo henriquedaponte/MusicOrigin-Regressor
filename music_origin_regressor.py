@@ -31,9 +31,9 @@ def meanSquaredError(predicted, actual):
     r = actual - predicted # Residuals
     mse = np.sum(r**2) / len(predicted)
     
-    return round(mse)
+    return mse
 
-def preprocessData(filename):
+def preprocessData(filename, lat):
     '''
     Preprocesses the data by loading it, shuffling it, and dividing it into training and test sets.
     
@@ -51,7 +51,7 @@ def preprocessData(filename):
     
     '''
      
-    data = pd.read_csv(filename, delimiter='\t')
+    data = pd.read_csv(filename, delimiter=',')
 
     # Using 70% of the data for training
     trainDataSize = int(0.7 * data.shape[0])
@@ -66,15 +66,19 @@ def preprocessData(filename):
     Y_test_lat = (testData.iloc[:, -2].values).reshape(-1, 1)
     Y_test_lon = (testData.iloc[:, -1].values).reshape(-1, 1)
 
-    return X_train, Y_train_lat, Y_train_lon, X_test, Y_test_lat, Y_test_lon
+    if(lat):
+        return X_train, Y_train_lat, X_test, Y_test_lat
+    else:
+        return X_train, Y_train_lon, X_test, Y_test_lon
 
-def trainModelLat(X_train, Y_train_lat):
+
+def trainModel(X_train, Y_train):
 
     # Defiing decision variables
     beta = cp.Variable((X_train.shape[1], 1))
 
     # Defining objective function
-    objective = cp.Minimize(cp.sum_squares(Y_train_lat - X_train @ beta))
+    objective = cp.Minimize(cp.sum_squares(Y_train - X_train @ beta))
 
     # Formulating problem
     problem = cp.Problem(objective)
@@ -84,21 +88,57 @@ def trainModelLat(X_train, Y_train_lat):
 
     return beta.value
 
-def trainModelLon(X_train, Y_train_lon):
+def testModelLat(filename):
+     
+    X_train, Y_train_lat, X_test, Y_test_lat  = preprocessData(filename, True)
 
-    # Defiing decision variables
-    beta = cp.Variable((X_train.shape[1], 1))
+    # Training model
+    beta = trainModel(X_train, Y_train_lat)
 
-    # Defining objective function
-    objective = cp.Minimize(cp.sum_squares(Y_train_lon - X_train @ beta))
+    # Predicting values for training set
+    Y_pred_train = X_train @ beta
 
-    # Formulating problem
-    problem = cp.Problem(objective)
+    # Calculating the mean squared error for training set
+    mse_train_lat = meanSquaredError(Y_pred_train, Y_train_lat)
 
-    # Solving problem
-    problem.solve()
+    # Predicting values for test set
+    Y_pred_test = X_test @ beta
 
-    return beta.value
+    # Calculating the mean squared error for test set
+    mse_test_lat = meanSquaredError(Y_pred_test, Y_test_lat)
 
+    # Printing results
+    print("Training set mean squared error for Latitude Model: {}".format(mse_train_lat))
+    print("Testing set mean squared error for Latitude Model: {}".format(mse_test_lat))
+    print("\n")
 
+def testModelLon(filename):
+
+    X_train, Y_train_lon, X_test, Y_test_lon = preprocessData(filename, False)
+
+    # Training model
+    beta = trainModel(X_train, Y_train_lon)
+
+    # Predicting values for training set
+    Y_pred_train = X_train @ beta
+
+    # Calculating the mean squared error for training set
+    mse_train_lon = meanSquaredError(Y_pred_train, Y_train_lon)
+
+    # Predicting values for test set
+    Y_pred_test = X_test @ beta
+
+    # Calculating the mean squared error for test set
+    mse_test_lon = meanSquaredError(Y_pred_test, Y_test_lon)
+
+    # Printing results
+
+    print("Training set mean squared error for Longitutde Model: {}".format(mse_train_lon))
+    print("Testing set mean squared error for Longitutde Model: {}".format(mse_test_lon))
+    print("\n")
+
+    
+
+testModelLat('default_plus_chromatic_features_1059_tracks-1.txt')
+testModelLon('default_plus_chromatic_features_1059_tracks-1.txt')
 
