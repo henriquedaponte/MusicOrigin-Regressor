@@ -1,6 +1,7 @@
 import numpy as np
 import cvxpy as cp
 import pandas as pd
+from sklearn.utils import shuffle
 
 
 # ====================== Utility Functions ======================
@@ -29,7 +30,7 @@ def meanSquaredError(predicted, actual):
         raise ValueError("NaN values detected in input arrays.")
     
     r = actual - predicted # Residuals
-    mse = np.sum(r**2) / len(predicted)
+    mse = np.sum(r**2) / len(r)
     
     return mse
 
@@ -56,13 +57,13 @@ def preprocessData(filename, lat):
     # Using 70% of the data for training
     trainDataSize = int(0.7 * data.shape[0])
     trainData = data.iloc[:trainDataSize, :]
-    X_train = trainData.iloc[:, :-1].values
+    X_train = trainData.iloc[:, :-2].values
     Y_train_lat = (trainData.iloc[:, -2].values).reshape(-1, 1)
     Y_train_lon = (trainData.iloc[:, -1].values).reshape(-1, 1)
 
     # Using 30% of the data for testing 
     testData = data.iloc[trainDataSize:, :]
-    X_test = testData.iloc[:, :-1].values
+    X_test = testData.iloc[:, :-2].values
     Y_test_lat = (testData.iloc[:, -2].values).reshape(-1, 1)
     Y_test_lon = (testData.iloc[:, -1].values).reshape(-1, 1)
 
@@ -70,6 +71,58 @@ def preprocessData(filename, lat):
         return X_train, Y_train_lat, X_test, Y_test_lat
     else:
         return X_train, Y_train_lon, X_test, Y_test_lon
+    
+def kFoldCrossValidation(filename, k):
+
+    data = pd.read_csv(filename, delimiter=',')
+
+    # Shuffle the data
+    data = shuffle(data).reset_index(drop=True)
+    
+    # Calculate the size of each fold
+    fold_size = len(data) // k
+    
+    # Initialize a list to store the mean squared error for each fold
+    mse_train_lat = []
+    mse_train_lon = []
+    mse_test_lat = []
+    mse_test_lon = []
+    
+    # Perform k-fold cross-validation
+    for fold in range(k):
+        # Define the test data for this fold
+        start = fold * fold_size
+        end = start + fold_size if fold != (k - 1) else len(data)
+        test_data = data.iloc[start:end]
+        
+        # Define the training data for this fold
+        train_data = data.drop(test_data.index)
+
+        # Aloocating proper data for training
+        X_train = train_data.iloc[:, :-2].values
+        Y_train_lat = (train_data.iloc[:, -2].values).reshape(-1, 1)
+        Y_train_lon = (train_data.iloc[:, -1].values).reshape(-1, 1)
+
+        # Allocating proper data for testing
+        X_test = test_data.iloc[:, :-2].values
+        Y_test_lat = (test_data.iloc[:, -2].values).reshape(-1, 1)
+        Y_test_lon = (test_data.iloc[:, -1].values).reshape(-1, 1)
+        
+        # Training lattitude and longitude models here on training data
+        trainModel(X_train, Y_train_lat)
+        trainModel(X_train, Y_train_lon)
+
+
+        # Test your model here on test_data
+        
+        # Calculate the MSE for this fold and append it to the mse_scores list
+        # mse = meanSquaredError(predictions, test_data['target_column'])
+        # mse_scores.append(mse)
+    
+    # Calculate the average MSE across all folds
+    average_mse = np.mean(mse_scores)
+
+    return 0
 
 
 def trainModel(X_train, Y_train):
@@ -112,6 +165,8 @@ def testModelLat(filename):
     print("Testing set mean squared error for Latitude Model: {}".format(mse_test_lat))
     print("\n")
 
+    return mse_train_lat, mse_test_lat
+
 def testModelLon(filename):
 
     X_train, Y_train_lon, X_test, Y_test_lon = preprocessData(filename, False)
@@ -132,13 +187,50 @@ def testModelLon(filename):
     mse_test_lon = meanSquaredError(Y_pred_test, Y_test_lon)
 
     # Printing results
-
     print("Training set mean squared error for Longitutde Model: {}".format(mse_train_lon))
     print("Testing set mean squared error for Longitutde Model: {}".format(mse_test_lon))
     print("\n")
 
+
+def testModel(filename, lat):
     
 
-testModelLat('default_plus_chromatic_features_1059_tracks-1.txt')
-testModelLon('default_plus_chromatic_features_1059_tracks-1.txt')
+    X_train, Y_train, X_test, Y_test = preprocessData(filename, lat)
+
+    # Training model
+    beta = trainModel(X_train, Y_train)
+
+    # Predicting values for training set
+    Y_pred_train = X_train @ beta
+
+    # Calculating the mean squared error for training set
+    mse_train = meanSquaredError(Y_pred_train, Y_train)
+
+    # Predicting values for test set
+    Y_pred_test = X_test @ beta
+
+    # Calculating the mean squared error for test set
+    mse_test = meanSquaredError(Y_pred_test, Y_test)
+
+    if(lat):
+        # Printing results
+        print("Training set mean squared error for Latitude Model: {}".format(mse_train))
+        print("Testing set mean squared error for Latitude Model: {}".format(mse_test))
+        print("\n")
+    else:
+        # Printing results
+        print("Training set mean squared error for Longitutde Model: {}".format(mse_train))
+        print("Testing set mean squared error for Longitutde Model: {}".format(mse_test))
+        print("\n")
+    
+    return mse_train, mse_test
+
+
+    
+
+
+    
+
+mse_train_lat, mse_test_lat = testModel('default_plus_chromatic_features_1059_tracks-1.txt', True)
+mse_train_lon, mse_test_lon = testModel('default_plus_chromatic_features_1059_tracks-1.txt', False)
 
