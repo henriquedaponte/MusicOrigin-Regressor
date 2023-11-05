@@ -111,8 +111,8 @@ def kFoldCrossValidation(filename, k):
         print('                  MSE\'s for iteration', i,'k = ', k)
         print('=========================================================', '\n')
         # Training lattitude and longitude models here on training data
-        a, b = testModel2(X_train, Y_train_lat, X_test, Y_test_lat, True)
-        c, d = testModel2(X_train, Y_train_lon, X_test, Y_test_lon, False)
+        a, b = testModelKFold(X_train, Y_train_lat, X_test, Y_test_lat, True)
+        c, d = testModelKFold(X_train, Y_train_lon, X_test, Y_test_lon, False)
 
         mse_train_lat += a
         mse_test_lat += b
@@ -134,8 +134,6 @@ def kFoldCrossValidation(filename, k):
     print("Final testing set mean squared error for Longitutde Model after k-fold cross validation(k = {}): {}".format(k, mse_test_lon))
     print("\n")
 
-
-
 def trainModel(X_train, Y_train):
 
     # Defiing decision variables
@@ -152,8 +150,41 @@ def trainModel(X_train, Y_train):
 
     return beta.value
 
+def trainModelLassoUnreg(X_train, Y_train):
+    
+        # Defiing decision variables
+        beta = cp.Variable((X_train.shape[1], 1))
+        lambdaCoeff = cp.Variable()
+    
+        # Defining objective function
+        objective = cp.Minimize((cp.sum_squares(Y_train - X_train @ beta) + lambdaCoeff * cp.sum_squares(beta)) / X_train.shape[0])
+    
+        # Formulating problem
+        problem = cp.Problem(objective)
+    
+        # Solving problem
+        problem.solve()
+    
+        return beta.value, lambdaCoeff.value
 
-def testModel1(filename, lat):
+def trainModelLassoReg(X_train, Y_train):
+    
+        # Defiing decision variables
+        beta = cp.Variable((X_train.shape[1], 1))
+        lambdaCoeff = cp.Variable()
+    
+        # Defining objective function
+        objective = cp.Minimize((cp.sum_squares(Y_train - X_train @ beta) + lambdaCoeff * cp.norm(beta, 1)) / X_train.shape[0])
+    
+        # Formulating problem
+        problem = cp.Problem(objective)
+    
+        # Solving problem
+        problem.solve()
+    
+        return beta.value, lambdaCoeff.value
+
+def testModel(filename, lat):
 
     X_train, Y_train, X_test, Y_test = preprocessData(filename, lat)
 
@@ -185,7 +216,7 @@ def testModel1(filename, lat):
     
     return mse_train, mse_test
 
-def testModel2(X_train, Y_train, X_test, Y_test, lat):
+def testModelKFold(X_train, Y_train, X_test, Y_test, lat):
 
     # Training model
     beta = trainModel(X_train, Y_train)
@@ -216,11 +247,9 @@ def testModel2(X_train, Y_train, X_test, Y_test, lat):
     return mse_train, mse_test
     
 
-
-    
 # Problem 1.1
-mse_train_lat, mse_test_lat = testModel1('default_plus_chromatic_features_1059_tracks-1.txt', True)
-mse_train_lon, mse_test_lon = testModel1('default_plus_chromatic_features_1059_tracks-1.txt', False)
+mse_train_lat, mse_test_lat = testModel('default_plus_chromatic_features_1059_tracks-1.txt', True)
+mse_train_lon, mse_test_lon = testModel('default_plus_chromatic_features_1059_tracks-1.txt', False)
 
 kFoldCrossValidation('default_plus_chromatic_features_1059_tracks-1.txt', 10)
 kFoldCrossValidation('default_plus_chromatic_features_1059_tracks-1.txt', 3)
