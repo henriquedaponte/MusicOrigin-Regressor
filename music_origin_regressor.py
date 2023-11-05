@@ -75,21 +75,20 @@ def preprocessData(filename, lat):
 def kFoldCrossValidation(filename, k):
 
     data = pd.read_csv(filename, delimiter=',')
-
-    # Shuffle the data
-    data = shuffle(data).reset_index(drop=True)
     
     # Calculate the size of each fold
     fold_size = len(data) // k
     
     # Initialize a list to store the mean squared error for each fold
-    mse_train_lat = []
-    mse_train_lon = []
-    mse_test_lat = []
-    mse_test_lon = []
+    mse_train_lat = 0
+    mse_train_lon = 0
+    mse_test_lat = 0
+    mse_test_lon = 0
+    i = 1
     
     # Perform k-fold cross-validation
     for fold in range(k):
+    
         # Define the test data for this fold
         start = fold * fold_size
         end = start + fold_size if fold != (k - 1) else len(data)
@@ -108,21 +107,33 @@ def kFoldCrossValidation(filename, k):
         Y_test_lat = (test_data.iloc[:, -2].values).reshape(-1, 1)
         Y_test_lon = (test_data.iloc[:, -1].values).reshape(-1, 1)
         
+        print('=========================================================', '\n')
+        print('                  MSE\'s for iteration', i,'k = ', k)
+        print('=========================================================', '\n')
         # Training lattitude and longitude models here on training data
-        trainModel(X_train, Y_train_lat)
-        trainModel(X_train, Y_train_lon)
+        a, b = testModel2(X_train, Y_train_lat, X_test, Y_test_lat, True)
+        c, d = testModel2(X_train, Y_train_lon, X_test, Y_test_lon, False)
 
+        mse_train_lat += a
+        mse_test_lat += b
+        mse_train_lon += c
+        mse_test_lon += d
+        i  += 1
 
-        # Test your model here on test_data
-        
-        # Calculate the MSE for this fold and append it to the mse_scores list
-        # mse = meanSquaredError(predictions, test_data['target_column'])
-        # mse_scores.append(mse)
     
     # Calculate the average MSE across all folds
-    average_mse = np.mean(mse_scores)
+    mse_train_lat = mse_train_lat / k
+    mse_test_lat = mse_test_lat / k
+    mse_train_lon = mse_train_lon / k
+    mse_test_lon = mse_test_lon / k
 
-    return 0
+    print("Final training set mean squared error for Latitude Model after k-fold cross validation (k = {}): {}".format(k, mse_train_lat))
+    print("Final testing set mean squared error for Latitude Model after k-fold cross validation(k = {}): {}".format(k, mse_test_lat))
+    print("\n")
+    print("Final training set mean squared error for Longitutde Model after k-fold cross validation(k = {}): {}".format(k, mse_train_lon))
+    print("Final testing set mean squared error for Longitutde Model after k-fold cross validation(k = {}): {}".format(k, mse_test_lon))
+    print("\n")
+
 
 
 def trainModel(X_train, Y_train):
@@ -141,59 +152,8 @@ def trainModel(X_train, Y_train):
 
     return beta.value
 
-def testModelLat(filename):
-     
-    X_train, Y_train_lat, X_test, Y_test_lat  = preprocessData(filename, True)
 
-    # Training model
-    beta = trainModel(X_train, Y_train_lat)
-
-    # Predicting values for training set
-    Y_pred_train = X_train @ beta
-
-    # Calculating the mean squared error for training set
-    mse_train_lat = meanSquaredError(Y_pred_train, Y_train_lat)
-
-    # Predicting values for test set
-    Y_pred_test = X_test @ beta
-
-    # Calculating the mean squared error for test set
-    mse_test_lat = meanSquaredError(Y_pred_test, Y_test_lat)
-
-    # Printing results
-    print("Training set mean squared error for Latitude Model: {}".format(mse_train_lat))
-    print("Testing set mean squared error for Latitude Model: {}".format(mse_test_lat))
-    print("\n")
-
-    return mse_train_lat, mse_test_lat
-
-def testModelLon(filename):
-
-    X_train, Y_train_lon, X_test, Y_test_lon = preprocessData(filename, False)
-
-    # Training model
-    beta = trainModel(X_train, Y_train_lon)
-
-    # Predicting values for training set
-    Y_pred_train = X_train @ beta
-
-    # Calculating the mean squared error for training set
-    mse_train_lon = meanSquaredError(Y_pred_train, Y_train_lon)
-
-    # Predicting values for test set
-    Y_pred_test = X_test @ beta
-
-    # Calculating the mean squared error for test set
-    mse_test_lon = meanSquaredError(Y_pred_test, Y_test_lon)
-
-    # Printing results
-    print("Training set mean squared error for Longitutde Model: {}".format(mse_train_lon))
-    print("Testing set mean squared error for Longitutde Model: {}".format(mse_test_lon))
-    print("\n")
-
-
-def testModel(filename, lat):
-    
+def testModel1(filename, lat):
 
     X_train, Y_train, X_test, Y_test = preprocessData(filename, lat)
 
@@ -225,12 +185,44 @@ def testModel(filename, lat):
     
     return mse_train, mse_test
 
+def testModel2(X_train, Y_train, X_test, Y_test, lat):
 
+    # Training model
+    beta = trainModel(X_train, Y_train)
+
+    # Predicting values for training set
+    Y_pred_train = X_train @ beta
+
+    # Calculating the mean squared error for training set
+    mse_train = meanSquaredError(Y_pred_train, Y_train)
+
+    # Predicting values for test set
+    Y_pred_test = X_test @ beta
+
+    # Calculating the mean squared error for test set
+    mse_test = meanSquaredError(Y_pred_test, Y_test)
+
+    if(lat):
+        # Printing results
+        print("Training set mean squared error for Latitude Model: {}".format(mse_train))
+        print("Testing set mean squared error for Latitude Model: {}".format(mse_test))
+        print("\n")
+    else:
+        # Printing results
+        print("Training set mean squared error for Longitutde Model: {}".format(mse_train))
+        print("Testing set mean squared error for Longitutde Model: {}".format(mse_test))
+        print("\n")
+    
+    return mse_train, mse_test
     
 
 
     
+# Problem 1.1
+mse_train_lat, mse_test_lat = testModel1('default_plus_chromatic_features_1059_tracks-1.txt', True)
+mse_train_lon, mse_test_lon = testModel1('default_plus_chromatic_features_1059_tracks-1.txt', False)
 
-mse_train_lat, mse_test_lat = testModel('default_plus_chromatic_features_1059_tracks-1.txt', True)
-mse_train_lon, mse_test_lon = testModel('default_plus_chromatic_features_1059_tracks-1.txt', False)
+kFoldCrossValidation('default_plus_chromatic_features_1059_tracks-1.txt', 10)
+kFoldCrossValidation('default_plus_chromatic_features_1059_tracks-1.txt', 3)
+
 
