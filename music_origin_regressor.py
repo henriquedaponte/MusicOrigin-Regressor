@@ -216,6 +216,55 @@ def testModel(filename, lat):
     
     return mse_train, mse_test
 
+def testModelLasso(filename, lat, reg):
+
+    # Question: Should I use the same formula for training and predicting?
+
+    X_train, Y_train, X_test, Y_test = preprocessData(filename, lat)
+
+    if(reg):
+        # Training model
+        beta = trainModelLassoReg(X_train, Y_train)
+    else:
+        beta = trainModelLassoUnreg(X_train, Y_train)
+
+    # Predicting values for training set
+    Y_pred_train = (X_train @ beta)
+
+    # Calculating the mean squared error for training set
+    mse_train = meanSquaredError(Y_pred_train, Y_train)
+
+    # Predicting values for test set
+    Y_pred_test = X_test @ beta
+
+    # Calculating the mean squared error for test set
+    mse_test = meanSquaredError(Y_pred_test, Y_test)
+
+    # Printing results
+    if(lat):
+        if(reg):
+            print("Training set mean squared error for Latitude Model using Regularized Lasso Regression: {}".format(mse_train))
+            print("Testing set mean squared error for Latitude Model using Regularized Lasso Regression:: {}".format(mse_test))
+            print("\n")
+
+        else:
+            print("Training set mean squared error for Latitude Model using Unregularized Lasso Regression: {}".format(mse_train))
+            print("Testing set mean squared error for Latitude Model using Unregularized Lasso Regression:: {}".format(mse_test))
+            print("\n")
+
+    else:
+        if(reg):
+            print("Training set mean squared error for Longitude Model using Regularized Lasso Regression: {}".format(mse_train))
+            print("Testing set mean squared error for Longitude Model using Regularized Lasso Regression:: {}".format(mse_test))
+            print("\n")
+
+        else:
+            print("Training set mean squared error for Longitude Model using Unregularized Lasso Regression: {}".format(mse_train))
+            print("Testing set mean squared error for Longitude Model using Unregularized Lasso Regression:: {}".format(mse_test))
+            print("\n")
+    
+    return mse_train, mse_test
+
 def testModelKFold(X_train, Y_train, X_test, Y_test, lat):
 
     # Training model
@@ -251,7 +300,13 @@ def testModelKFold(X_train, Y_train, X_test, Y_test, lat):
 mse_train_lat, mse_test_lat = testModel('default_plus_chromatic_features_1059_tracks-1.txt', True)
 mse_train_lon, mse_test_lon = testModel('default_plus_chromatic_features_1059_tracks-1.txt', False)
 
+# Problem 1.2
 kFoldCrossValidation('default_plus_chromatic_features_1059_tracks-1.txt', 10)
 kFoldCrossValidation('default_plus_chromatic_features_1059_tracks-1.txt', 3)
+
+
+# Question, why is k fold worst than a normal split?
+
+# Problem 1.3
 
 
