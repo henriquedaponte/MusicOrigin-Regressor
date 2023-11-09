@@ -263,6 +263,14 @@ def testModelLasso(filename, lat, leastSqu,lambdaCoeff, printResults = True):
                 print("Training set mean squared error for Longitude Model using Lasso Regression regularized by L1: {}".format(mse_train))
                 print("Testing set mean squared error for Longitude Model using Lasso Regression regularized by L1: {}".format(mse_test))
                 print("\n")
+
+    nonZeroCoeff = 0
+    for element in beta:
+        if(element != 0):
+            nonZeroCoeff += 1
+
+    print('Number of non-zero coefficients: ', nonZeroCoeff)
+
     
     return mse_train, mse_test
 
