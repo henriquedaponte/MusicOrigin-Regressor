@@ -215,7 +215,7 @@ def testModel(filename, lat):
     
     return mse_train, mse_test
 
-def testModelLasso(filename, lat, leastSqu,lambdaCoeff, printResults = True):
+def testModelLasso(filename, lat, leastSqu,lambdaCoeff, printResults = True, nonZero=False):
 
     # Question: Should I use the same formula for training and predicting?
 
@@ -263,13 +263,13 @@ def testModelLasso(filename, lat, leastSqu,lambdaCoeff, printResults = True):
                 print("Training set mean squared error for Longitude Model using Lasso Regression regularized by L1: {}".format(mse_train))
                 print("Testing set mean squared error for Longitude Model using Lasso Regression regularized by L1: {}".format(mse_test))
                 print("\n")
+    if(nonZero):
+        nonZeroCoeff = 0
+        for element in beta:
+            if(element != 0):
+                nonZeroCoeff += 1
 
-    nonZeroCoeff = 0
-    for element in beta:
-        if(element != 0):
-            nonZeroCoeff += 1
-
-    print('Number of non-zero coefficients: ', nonZeroCoeff)
+        print('Number of non-zero coefficients: ', nonZeroCoeff)
 
     
     return mse_train, mse_test
@@ -350,9 +350,9 @@ lambda_range = np.logspace(-4, 4, 100)  # for example, 100 values between 10^-4 
 best_lambda_lat = findOptimalLambda('default_plus_chromatic_features_1059_tracks-1.txt', True, lambda_range)
 best_lambda_lon = findOptimalLambda('default_plus_chromatic_features_1059_tracks-1.txt', False, lambda_range)
 
-testModelLasso('default_plus_chromatic_features_1059_tracks-1.txt', True, False, best_lambda_lat)
-testModelLasso('default_plus_chromatic_features_1059_tracks-1.txt', False, False, best_lambda_lon)
-testModelLasso('default_plus_chromatic_features_1059_tracks-1.txt', True, True, best_lambda_lat)
-testModelLasso('default_plus_chromatic_features_1059_tracks-1.txt', False, True, best_lambda_lon)
+testModelLasso('default_plus_chromatic_features_1059_tracks-1.txt', True, False, best_lambda_lat, nonZero=True)
+testModelLasso('default_plus_chromatic_features_1059_tracks-1.txt', False, False, best_lambda_lon, nonZero=True)
+testModelLasso('default_plus_chromatic_features_1059_tracks-1.txt', True, True, best_lambda_lat, nonZero=True)
+testModelLasso('default_plus_chromatic_features_1059_tracks-1.txt', False, True, best_lambda_lon, nonZero=True)
 
 
