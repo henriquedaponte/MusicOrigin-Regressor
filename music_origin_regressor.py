@@ -72,7 +72,7 @@ def preprocessData(filename, lat):
     else:
         return X_train, Y_train_lon, X_test, Y_test_lon
     
-def kFoldCrossValidation(filename, k):
+def kFoldCrossValidation(filename, k, verbose=False):
 
     data = pd.read_csv(filename, delimiter=',')
     
@@ -107,12 +107,13 @@ def kFoldCrossValidation(filename, k):
         Y_test_lat = (test_data.iloc[:, -2].values).reshape(-1, 1)
         Y_test_lon = (test_data.iloc[:, -1].values).reshape(-1, 1)
         
-        print('=========================================================', '\n')
-        print('                  MSE\'s for iteration', i,'k = ', k)
-        print('=========================================================', '\n')
+        if(verbose):
+            print('=========================================================', '\n')
+            print('                  MSE\'s for iteration', i,'k = ', k)
+            print('=========================================================', '\n')
         # Training lattitude and longitude models here on training data
-        a, b = testModelKFold(X_train, Y_train_lat, X_test, Y_test_lat, True)
-        c, d = testModelKFold(X_train, Y_train_lon, X_test, Y_test_lon, False)
+        a, b = testModelKFold(X_train, Y_train_lat, X_test, Y_test_lat, True, verbose)
+        c, d = testModelKFold(X_train, Y_train_lon, X_test, Y_test_lon, False, verbose)
 
         mse_train_lat += a
         mse_test_lat += b
@@ -150,11 +151,10 @@ def trainModel(X_train, Y_train):
 
     return beta.value
 
-def trainModelLassoUnreg(X_train, Y_train):
+def trainModelLassoLeastSquares(X_train, Y_train, lambdaCoeff):
     
         # Defiing decision variables
         beta = cp.Variable((X_train.shape[1], 1))
-        lambdaCoeff = cp.Variable()
     
         # Defining objective function
         objective = cp.Minimize((cp.sum_squares(Y_train - X_train @ beta) + lambdaCoeff * cp.sum_squares(beta)) / X_train.shape[0])
@@ -165,13 +165,12 @@ def trainModelLassoUnreg(X_train, Y_train):
         # Solving problem
         problem.solve()
     
-        return beta.value, lambdaCoeff.value
+        return beta.value
 
-def trainModelLassoReg(X_train, Y_train):
+def trainModelLassoL1(X_train, Y_train, lambdaCoeff):
     
         # Defiing decision variables
         beta = cp.Variable((X_train.shape[1], 1))
-        lambdaCoeff = cp.Variable()
     
         # Defining objective function
         objective = cp.Minimize((cp.sum_squares(Y_train - X_train @ beta) + lambdaCoeff * cp.norm(beta, 1)) / X_train.shape[0])
@@ -182,7 +181,7 @@ def trainModelLassoReg(X_train, Y_train):
         # Solving problem
         problem.solve()
     
-        return beta.value, lambdaCoeff.value
+        return beta.value
 
 def testModel(filename, lat):
 
@@ -216,17 +215,17 @@ def testModel(filename, lat):
     
     return mse_train, mse_test
 
-def testModelLasso(filename, lat, reg):
+def testModelLasso(filename, lat, leastSqu,lambdaCoeff, printResults = True):
 
     # Question: Should I use the same formula for training and predicting?
 
     X_train, Y_train, X_test, Y_test = preprocessData(filename, lat)
 
-    if(reg):
+    if(leastSqu):
         # Training model
-        beta = trainModelLassoReg(X_train, Y_train)
+        beta = trainModelLassoL1(X_train, Y_train, lambdaCoeff)
     else:
-        beta = trainModelLassoUnreg(X_train, Y_train)
+        beta = trainModelLassoLeastSquares(X_train, Y_train, lambdaCoeff)
 
     # Predicting values for training set
     Y_pred_train = (X_train @ beta)
@@ -241,31 +240,33 @@ def testModelLasso(filename, lat, reg):
     mse_test = meanSquaredError(Y_pred_test, Y_test)
 
     # Printing results
-    if(lat):
-        if(reg):
-            print("Training set mean squared error for Latitude Model using Regularized Lasso Regression: {}".format(mse_train))
-            print("Testing set mean squared error for Latitude Model using Regularized Lasso Regression:: {}".format(mse_test))
-            print("\n")
+    if(printResults):
+        print('Optimal Lambda: ', lambdaCoeff)
+        if(lat):
+            if(leastSqu):
+                print("Training set mean squared error for Latitude Model using Lasso Regression regularized by Least Squares: {}".format(mse_train))
+                print("Testing set mean squared error for Latitude Model using Lasso Regression regularized by Least Squares: {}".format(mse_test))
+                print("\n")
+
+            else:
+                print("Training set mean squared error for Latitude Model using Lasso Regression regularized by L1: {}".format(mse_train))
+                print("Testing set mean squared error for Latitude Model using Lasso Regression regularized by L1: {}".format(mse_test))
+                print("\n")
 
         else:
-            print("Training set mean squared error for Latitude Model using Unregularized Lasso Regression: {}".format(mse_train))
-            print("Testing set mean squared error for Latitude Model using Unregularized Lasso Regression:: {}".format(mse_test))
-            print("\n")
+            if(leastSqu):
+                print("Training set mean squared error for Longitude Model using Lasso Regression regularized by Least Squares: {}".format(mse_train))
+                print("Testing set mean squared error for Longitude Model using Lasso Regression regularized by Least Squares: {}".format(mse_test))
+                print("\n")
 
-    else:
-        if(reg):
-            print("Training set mean squared error for Longitude Model using Regularized Lasso Regression: {}".format(mse_train))
-            print("Testing set mean squared error for Longitude Model using Regularized Lasso Regression:: {}".format(mse_test))
-            print("\n")
-
-        else:
-            print("Training set mean squared error for Longitude Model using Unregularized Lasso Regression: {}".format(mse_train))
-            print("Testing set mean squared error for Longitude Model using Unregularized Lasso Regression:: {}".format(mse_test))
-            print("\n")
+            else:
+                print("Training set mean squared error for Longitude Model using Lasso Regression regularized by L1: {}".format(mse_train))
+                print("Testing set mean squared error for Longitude Model using Lasso Regression regularized by L1: {}".format(mse_test))
+                print("\n")
     
     return mse_train, mse_test
 
-def testModelKFold(X_train, Y_train, X_test, Y_test, lat):
+def testModelKFold(X_train, Y_train, X_test, Y_test, lat, verbose = False):
 
     # Training model
     beta = trainModel(X_train, Y_train)
@@ -282,31 +283,68 @@ def testModelKFold(X_train, Y_train, X_test, Y_test, lat):
     # Calculating the mean squared error for test set
     mse_test = meanSquaredError(Y_pred_test, Y_test)
 
-    if(lat):
-        # Printing results
-        print("Training set mean squared error for Latitude Model: {}".format(mse_train))
-        print("Testing set mean squared error for Latitude Model: {}".format(mse_test))
-        print("\n")
-    else:
-        # Printing results
-        print("Training set mean squared error for Longitutde Model: {}".format(mse_train))
-        print("Testing set mean squared error for Longitutde Model: {}".format(mse_test))
-        print("\n")
+    if(verbose):
+        if(lat):
+            # Printing results
+            print("Training set mean squared error for Latitude Model: {}".format(mse_train))
+            print("Testing set mean squared error for Latitude Model: {}".format(mse_test))
+            print("\n")
+        else:
+            # Printing results
+            print("Training set mean squared error for Longitutde Model: {}".format(mse_train))
+            print("Testing set mean squared error for Longitutde Model: {}".format(mse_test))
+            print("\n")
     
     return mse_train, mse_test
+
+def findOptimalLambda(filename, lat, lambda_range):
+    best_lambda = None
+    best_mse = float('inf')
     
+    # Iterate over all the lambda values we want to test
+    for lambdaCoeff in lambda_range:
+        # Perform k-fold cross-validation
+        # This is a simplified version, assuming you implement the k-fold inside this function
+        avg_mse_train, avg_mse_test = testModelLasso(filename, 5, lambdaCoeff, lat, False)
+        
+        # Check if we got a better MSE with this lambda
+        if avg_mse_test < best_mse:
+            best_mse = avg_mse_test
+            best_lambda = lambdaCoeff
+            
+    return best_lambda
+
+
+
+# ====================== Problem Resolution ======================
 
 # Problem 1.1
+print('=========================================================', '\n')
+print('                      Problem 1.1                        ', '\n')
+print('=========================================================', '\n')
 mse_train_lat, mse_test_lat = testModel('default_plus_chromatic_features_1059_tracks-1.txt', True)
 mse_train_lon, mse_test_lon = testModel('default_plus_chromatic_features_1059_tracks-1.txt', False)
 
 # Problem 1.2
+print('=========================================================', '\n')
+print('                      Problem 1.2                        ', '\n')
+print('=========================================================', '\n')
 kFoldCrossValidation('default_plus_chromatic_features_1059_tracks-1.txt', 10)
 kFoldCrossValidation('default_plus_chromatic_features_1059_tracks-1.txt', 3)
 
 
-# Question, why is k fold worst than a normal split?
 
 # Problem 1.3
+print('=========================================================', '\n')
+print('                      Problem 1.3                        ', '\n')
+print('=========================================================', '\n')
+lambda_range = np.logspace(-4, 4, 100)  # for example, 100 values between 10^-4 and 10^4
+best_lambda_lat = findOptimalLambda('default_plus_chromatic_features_1059_tracks-1.txt', True, lambda_range)
+best_lambda_lon = findOptimalLambda('default_plus_chromatic_features_1059_tracks-1.txt', False, lambda_range)
+
+testModelLasso('default_plus_chromatic_features_1059_tracks-1.txt', True, False, best_lambda_lat)
+testModelLasso('default_plus_chromatic_features_1059_tracks-1.txt', False, False, best_lambda_lon)
+testModelLasso('default_plus_chromatic_features_1059_tracks-1.txt', True, True, best_lambda_lat)
+testModelLasso('default_plus_chromatic_features_1059_tracks-1.txt', False, True, best_lambda_lon)
 
 
